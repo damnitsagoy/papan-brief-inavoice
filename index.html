@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8" data-own>
-<meta name="viewport" content="width=device-width, initial-scale=1" data-own>
-<title data-own>Papan Brief Inavoice</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" data-own>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" data-own>
-<style id="css" data-own>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papan Brief Inavoice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap">
+<style id="css">
 /* layout idea: quiet calendar. month heading, grid of hairline date tiles, color only on the status dot. */
 :root {
   --bg: #f7f7f8;
@@ -77,13 +77,17 @@ select:hover { border-color: var(--mute); }
 .st select { padding-left: 22px; font-size: 12px; }
 .gap { grid-column: 1 / -1; font-size: 12px; color: var(--mute); padding: 4px 2px; }
 .empty { color: var(--mute); padding: 28px 0; }
+.bottom { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.lock form { display: flex; gap: 6px; }
+.lock input { font: 13px var(--body); color: var(--ink); background: var(--tile); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 160px; }
+.go { font: 500 13px var(--body); color: var(--tile); background: var(--ink); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+select:disabled { cursor: default; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
 <div id="app"></div>
-<script type="application/json" id="state">{"v":1,"s":{"2026-12-02":1,"2026-12-25":2,"2026-12-24":2,"2026-12-04":2,"2026-12-09":2,"2026-12-11":2,"2026-12-14":2}}</script>
-<script id="code" data-own>
+<script id="code">
 (function () {
   var SLOTS = [
     { d: "2026-12-02", t: "ceribel e-commerce", k: "client", c: "ceribel", n: "Mas Mik bilang inavoice punya suara e-commerce, maksudnya masih perlu dikonfirmasi ke dia. Detail cerita dari Aul." },
@@ -117,15 +121,15 @@ select:hover { border-color: var(--mute); }
   var MON = { "12": "des", "01": "jan" };
 
   var app = document.getElementById("app");
-  var state;
-  try { state = JSON.parse(document.getElementById("state").textContent); } catch (e) { state = { v: 1, s: {} }; }
-  if (!state || !state.s) state = { v: 1, s: {} };
+  var state = { s: {} }, loaded = false;
+  var pw = "";
+  try { pw = localStorage.getItem("pb-pw") || ""; } catch (e) {}
 
   var view = { m: "all", k: "all", s: "all" };
   try { var sv = sessionStorage.getItem("pb-view2"); if (sv) { var o = JSON.parse(sv); if (o) view = { m: o.m || "all", k: o.k || "all", s: o.s || "all" }; } } catch (e) {}
 
   var open = {};
-  var cap = null, capChecked = false, readOnly = false, saveMsg = "", timer = null, focusId = null;
+  var saveMsg = "", focusId = null, pending = 0;
 
   function st(id) { return state.s[id] || 0; }
   function isDone(id) { var s = st(id); return s === 2 || s === 4 || s === 5; }
@@ -194,7 +198,8 @@ select:hover { border-color: var(--mute); }
     var sel = h("select"); sel.id = "s-" + s.d;
     sel.setAttribute("aria-label", "status " + s.t);
     STATUS.forEach(function (name, i) { var op = h("option", null, name); op.value = String(i); if (i === v) op.selected = true; sel.appendChild(op); });
-    sel.disabled = true;
+    sel.disabled = !pw || !loaded;
+    sel.addEventListener("change", function () { setStatus(s.d, +sel.value); });
     box.appendChild(sel);
     foot.appendChild(box);
     c.appendChild(foot);
@@ -258,7 +263,7 @@ select:hover { border-color: var(--mute); }
       });
     }
 
-    var svl = h("div", "cnt sv", saveLine()); svl.style.marginTop = "24px"; wrap.appendChild(svl);
+    var foot2 = h("div", "bottom"); foot2.appendChild(lockBar()); foot2.appendChild(h("div", "cnt sv", saveLine())); wrap.appendChild(foot2);
     app.appendChild(wrap);
 
     if (focusId) {
@@ -268,61 +273,71 @@ select:hover { border-color: var(--mute); }
     }
   }
 
-  function saveLine() {
-    if (saveMsg) return saveMsg;
-    if (readOnly) return "mode lihat";
-    if (capChecked && !cap) return "mode lihat, tidak tersimpan";
-    return "";
-  }
-  function setMsg(m) { saveMsg = m; var n = app.querySelector(".sv"); if (n) n.textContent = saveLine(); }
+  function saveLine() { return saveMsg; }
+  function setMsg(m) { saveMsg = m; var n = app.querySelector(".sv"); if (n) n.textContent = m; }
   function saveView() { try { sessionStorage.setItem("pb-view2", JSON.stringify(view)); } catch (e) {} }
+
+  function lockBar() {
+    var bar = h("div", "lock");
+    if (pw) {
+      var out = h("button", "reset", "keluar mode edit");
+      out.type = "button";
+      out.addEventListener("click", function () { pw = ""; try { localStorage.removeItem("pb-pw"); } catch (e) {} render(); });
+      bar.appendChild(out);
+      return bar;
+    }
+    var form = h("form");
+    var inp = h("input"); inp.type = "password"; inp.id = "pw"; inp.placeholder = "password tim"; inp.autocomplete = "current-password";
+    inp.setAttribute("aria-label", "password tim");
+    var go = h("button", "go", "edit"); go.type = "submit";
+    form.appendChild(inp); form.appendChild(go);
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!inp.value) return;
+      pw = inp.value;
+      try { localStorage.setItem("pb-pw", pw); } catch (er) {}
+      render();
+    });
+    bar.appendChild(form);
+    return bar;
+  }
 
   function setStatus(id, v) {
     if (st(id) === v) return;
+    var prev = st(id);
     state.s[id] = v;
     focusId = "s-" + id;
+    pending++;
     render();
-    schedule();
-  }
-
-  function schedule() {
-    if (!cap || readOnly) return;
     setMsg("menyimpan");
-    clearTimeout(timer);
-    timer = setTimeout(save, 1200);
+    fetch("/api/status", { method: "POST", headers: { "Content-Type": "application/json", "x-edit-password": pw }, body: JSON.stringify({ slot: id, status: v }) })
+      .then(function (r) {
+        pending--;
+        if (r.status === 401) { state.s[id] = prev; pw = ""; try { localStorage.removeItem("pb-pw"); } catch (e) {} render(); setMsg("password salah"); return; }
+        if (!r.ok) throw new Error(r.status);
+        setMsg("tersimpan");
+      })
+      .catch(function () { pending = Math.max(0, pending - 1); state.s[id] = prev; render(); setMsg("gagal menyimpan"); });
   }
 
-  function buildDoc() {
-    var heads = Array.prototype.map.call(document.head.querySelectorAll("[data-own]"), function (n) { return n.outerHTML; }).join("\n");
-    var code = document.getElementById("code").textContent;
-    var json = JSON.stringify(state).replace(/</g, "\\u003c");
-    return "<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n" + heads + "\n</head>\n<body>\n<div id=\"app\"></div>\n<script type=\"application/json\" id=\"state\">" + json + "<\/script>\n<script id=\"code\" data-own>" + code + "<\/script>\n</body>\n</html>";
-  }
-
-  function save() {
-    if (!cap) return;
-    try { sessionStorage.setItem("pb-scroll", String(window.scrollY)); } catch (e) {}
-    Promise.resolve(cap.publish(buildDoc())).then(function () {
-      setMsg("tersimpan");
-    }).catch(function (e) {
-      var code = String((e && (e.code || e.message)) || e);
-      if (code.indexOf("not_granted") > -1 || code.indexOf("not_writer") > -1) { readOnly = true; setMsg("mode lihat"); }
-      else if (code.indexOf("conflict") > -1) { setMsg("dimuat ulang"); }
-      else { setMsg("gagal menyimpan"); }
-    });
+  function load() {
+    if (pending) return;
+    fetch("/api/status", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) {
+        if (pending) return;
+        var changed = JSON.stringify(j.s || {}) !== JSON.stringify(state.s);
+        state.s = j.s || {};
+        var first = !loaded; loaded = true;
+        var a = document.activeElement;
+        if ((changed || first) && !(a && a.tagName === "SELECT")) { var keep = saveMsg; render(); setMsg(keep); }
+      })
+      .catch(function () { setMsg("gagal memuat data"); });
   }
 
   render();
-  try {
-    var y = sessionStorage.getItem("pb-scroll");
-    if (y) { window.scrollTo(0, +y); sessionStorage.removeItem("pb-scroll"); }
-  } catch (e) {}
-
-  saveMsg = "hanya lihat";
-  render();
-  if (false) {
-    Promise.resolve(window.claude.use("artifact")).then(function (a) { cap = a || null; capChecked = true; setMsg(""); }).catch(function () { capChecked = true; setMsg(""); });
-  }
+  load();
+  setInterval(function () { if (!document.hidden) load(); }, 15000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
 })();
 </script>
 </body>
