@@ -1,21 +1,25 @@
 # papan brief inavoice
 
-Tracker brief konten inavoice, desember 2026 sampai januari 2027. Semua orang yang punya link bisa lihat dan ganti status.
+Tracker brief konten inavoice, desember 2026 sampai januari 2027. Semua orang yang punya link bisa lihat dan ganti status. Data disimpan di Supabase.
 
-## Setup di Vercel
+## Setup
 
-1. Di vercel.com, klik **Add New → Project**, lalu import repo `papan-brief-inavoice`. Framework preset: **Other**. Klik **Deploy**.
-2. Di project itu, buka **Storage**, pilih **Upstash** (Redis), lalu buat database gratis dan sambungkan ke project ini. Vercel otomatis ngisi `KV_REST_API_URL` dan `KV_REST_API_TOKEN`.
-3. Buka **Deployments**, klik **Redeploy** di deploy terakhir supaya pengaturan baru kepakai.
+**Supabase**
+1. Buka project Supabase, masuk **SQL Editor → New query**.
+2. Paste isi `supabase.sql`, klik **Run**.
+3. Buka **Project Settings → API Keys** (atau **API**). Catat **Project URL** dan **service_role key** (secret).
 
-Status awal (per 26 nov 2026) otomatis masuk waktu halaman pertama kali dibuka.
+**Vercel**
+1. **Add New → Project**, import repo `papan-brief-inavoice`, preset **Other**.
+2. Sebelum Deploy, buka **Environment Variables**, isi:
+   - `SUPABASE_URL` = Project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` = service_role key
+3. Klik **Deploy**. Kalau project sudah telanjur ter-deploy, isi variabelnya di **Settings → Environment Variables**, lalu **Redeploy**.
 
-## Cara pakai
-
-- Ganti status lewat dropdown di tiap kartu, langsung tersimpan.
-- Halaman ngecek perubahan dari tim tiap 15 detik.
+Service_role key itu rahasia. Cuma ditaruh di Vercel, jangan di kode atau di chat.
 
 ## File
 
 - `index.html`: halaman
-- `api/status.js`: baca dan simpan status ke Redis
+- `api/status.js`: baca dan simpan status ke Supabase
+- `supabase.sql`: bikin tabel dan isi status awal

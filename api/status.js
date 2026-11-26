@@ -1,6 +1,6 @@
-const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const KEY = "papan-brief:status";
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "");
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const TABLE = "brief_status";
 
 const SLOTS = [
   "2026-12-02", "2026-12-04", "2026-12-07", "2026-12-09", "2026-12-11", "2026-12-14",
@@ -11,48 +11,31 @@ const SLOTS = [
 ];
 const MAX_STATUS = 5;
 
-// status per 26 nov 2026, dipakai sekali waktu database masih kosong
-const SEED = {
-  "2026-12-02": 1, "2026-12-04": 2, "2026-12-09": 2, "2026-12-11": 2,
-  "2026-12-14": 2, "2026-12-24": 2, "2026-12-25": 2
-};
-
-async function redis(command) {
-  const r = await fetch(REDIS_URL, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + REDIS_TOKEN, "Content-Type": "application/json" },
-    body: JSON.stringify(command)
-  });
-  const j = await r.json();
-  if (j.error) throw new Error(j.error);
-  return j.result;
+function sb(path, options) {
+  return fetch(SUPABASE_URL + "/rest/v1/" + path, Object.assign({}, options, {
+    headers: Object.assign({
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json"
+    }, (options && options.headers) || {})
+  }));
 }
 
 async function readAll() {
-  const flat = await redis(["HGETALL", KEY]);
-  if (!flat || flat.length === 0) {
-    const seeded = await redis(["EXISTS", KEY + ":seeded"]);
-    if (!seeded) {
-      const args = ["HSET", KEY];
-      Object.keys(SEED).forEach((k) => args.push(k, String(SEED[k])));
-      await redis(args);
-      await redis(["SET", KEY + ":seeded", "1"]);
-      return Object.assign({}, SEED);
-    }
-    return {};
-  }
+  const r = await sb(TABLE + "?select=slot,status");
+  if (!r.ok) throw new Error("read " + r.status);
+  const rows = await r.json();
   const s = {};
-  for (let i = 0; i < flat.length; i += 2) {
-    const v = parseInt(flat[i + 1], 10);
-    if (SLOTS.includes(flat[i]) && v >= 0 && v <= MAX_STATUS) s[flat[i]] = v;
-  }
+  rows.forEach((row) => {
+    if (SLOTS.includes(row.slot) && row.status >= 0 && row.status <= MAX_STATUS) s[row.slot] = row.status;
+  });
   return s;
 }
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (!REDIS_URL || !REDIS_TOKEN) {
-    res.status(500).json({ error: "database belum disambung" });
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    res.status(500).json({ error: "supabase belum disambung" });
     return;
   }
   try {
@@ -69,8 +52,12 @@ module.exports = async function handler(req, res) {
         res.status(400).json({ error: "data tidak valid" });
         return;
       }
-      await readAll();
-      await redis(["HSET", KEY, slot, String(status)]);
+      const r = await sb(TABLE + "?on_conflict=slot", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ slot: slot, status: status, updated_at: new Date().toISOString() })
+      });
+      if (!r.ok) throw new Error("write " + r.status);
       res.status(200).json({ ok: true });
       return;
     }
