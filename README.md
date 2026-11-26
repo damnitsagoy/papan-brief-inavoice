@@ -7,16 +7,16 @@ Tracker brief konten inavoice, desember 2026 sampai januari 2027. Semua orang ya
 **Supabase**
 1. Buka project Supabase, masuk **SQL Editor → New query**.
 2. Paste isi `supabase.sql`, klik **Run**.
-3. Buka **Project Settings → API Keys** (atau **API**). Catat **Project URL** dan **service_role key** (secret).
+3. Buka **Project Settings → API Keys**, copy **Secret key** (`sb_secret_...`). Project URL ada di **Project Settings → Data API** (atau tombol **Connect** di atas), bentuknya `https://xxxx.supabase.co`.
 
 **Vercel**
 1. **Add New → Project**, import repo `papan-brief-inavoice`, preset **Other**.
 2. Sebelum Deploy, buka **Environment Variables**, isi:
    - `SUPABASE_URL` = Project URL
-   - `SUPABASE_SERVICE_ROLE_KEY` = service_role key
+   - `SUPABASE_SERVICE_ROLE_KEY` = secret key
 3. Klik **Deploy**. Kalau project sudah telanjur ter-deploy, isi variabelnya di **Settings → Environment Variables**, lalu **Redeploy**.
 
-Service_role key itu rahasia. Cuma ditaruh di Vercel, jangan di kode atau di chat.
+Secret key itu rahasia. Cuma ditaruh di Vercel, jangan di kode atau di chat.
 
 ## File
 

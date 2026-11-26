@@ -1,5 +1,5 @@
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "");
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
 const TABLE = "brief_status";
 
 const SLOTS = [
@@ -15,9 +15,11 @@ function sb(path, options) {
   return fetch(SUPABASE_URL + "/rest/v1/" + path, Object.assign({}, options, {
     headers: Object.assign({
       apikey: SUPABASE_KEY,
-      Authorization: "Bearer " + SUPABASE_KEY,
       "Content-Type": "application/json"
-    }, (options && options.headers) || {})
+    },
+    // kunci lama (jwt) juga dikirim di authorization; kunci baru sb_secret_ cukup di apikey
+    SUPABASE_KEY.startsWith("eyJ") ? { Authorization: "Bearer " + SUPABASE_KEY } : {},
+    (options && options.headers) || {})
   }));
 }
 
