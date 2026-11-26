@@ -77,11 +77,11 @@ select:hover { border-color: var(--mute); }
 .st select { padding-left: 22px; font-size: 12px; }
 .gap { grid-column: 1 / -1; font-size: 12px; color: var(--mute); padding: 4px 2px; }
 .empty { color: var(--mute); padding: 28px 0; }
-.bottom { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .lock form { display: flex; gap: 6px; }
 .lock input { font: 13px var(--body); color: var(--ink); background: var(--tile); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 160px; }
 .go { font: 500 13px var(--body); color: var(--tile); background: var(--ink); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-select:disabled { cursor: default; opacity: 1; }
+.st select:disabled { cursor: not-allowed; }
+.sv { width: 100%; text-align: right; min-height: 1em; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -238,6 +238,8 @@ select:disabled { cursor: default; opacity: 1; }
       rs.addEventListener("click", function () { view = { m: "all", k: "all", s: "all" }; saveView(); render(); });
       f.appendChild(rs);
     }
+    var lk = lockBar(); lk.style.marginLeft = "auto"; f.appendChild(lk);
+    f.appendChild(h("div", "cnt sv", saveLine()));
     wrap.appendChild(f);
 
     var list = SLOTS.filter(matches);
@@ -263,7 +265,7 @@ select:disabled { cursor: default; opacity: 1; }
       });
     }
 
-    var foot2 = h("div", "bottom"); foot2.appendChild(lockBar()); foot2.appendChild(h("div", "cnt sv", saveLine())); wrap.appendChild(foot2);
+    
     app.appendChild(wrap);
 
     if (focusId) {
