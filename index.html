@@ -77,9 +77,6 @@ select:hover { border-color: var(--mute); }
 .st select { padding-left: 22px; font-size: 12px; }
 .gap { grid-column: 1 / -1; font-size: 12px; color: var(--mute); padding: 4px 2px; }
 .empty { color: var(--mute); padding: 28px 0; }
-.lock form { display: flex; gap: 6px; }
-.lock input { font: 13px var(--body); color: var(--ink); background: var(--tile); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 160px; }
-.go { font: 500 13px var(--body); color: var(--tile); background: var(--ink); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 .st select:disabled { cursor: not-allowed; }
 .sv { width: 100%; text-align: right; min-height: 1em; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -122,8 +119,7 @@ select:hover { border-color: var(--mute); }
 
   var app = document.getElementById("app");
   var state = { s: {} }, loaded = false;
-  var pw = "";
-  try { pw = localStorage.getItem("pb-pw") || ""; } catch (e) {}
+
 
   var view = { m: "all", k: "all", s: "all" };
   try { var sv = sessionStorage.getItem("pb-view2"); if (sv) { var o = JSON.parse(sv); if (o) view = { m: o.m || "all", k: o.k || "all", s: o.s || "all" }; } } catch (e) {}
@@ -198,7 +194,7 @@ select:hover { border-color: var(--mute); }
     var sel = h("select"); sel.id = "s-" + s.d;
     sel.setAttribute("aria-label", "status " + s.t);
     STATUS.forEach(function (name, i) { var op = h("option", null, name); op.value = String(i); if (i === v) op.selected = true; sel.appendChild(op); });
-    sel.disabled = !pw || !loaded;
+    sel.disabled = !loaded;
     sel.addEventListener("change", function () { setStatus(s.d, +sel.value); });
     box.appendChild(sel);
     foot.appendChild(box);
@@ -238,7 +234,6 @@ select:hover { border-color: var(--mute); }
       rs.addEventListener("click", function () { view = { m: "all", k: "all", s: "all" }; saveView(); render(); });
       f.appendChild(rs);
     }
-    var lk = lockBar(); lk.style.marginLeft = "auto"; f.appendChild(lk);
     f.appendChild(h("div", "cnt sv", saveLine()));
     wrap.appendChild(f);
 
@@ -279,31 +274,6 @@ select:hover { border-color: var(--mute); }
   function setMsg(m) { saveMsg = m; var n = app.querySelector(".sv"); if (n) n.textContent = m; }
   function saveView() { try { sessionStorage.setItem("pb-view2", JSON.stringify(view)); } catch (e) {} }
 
-  function lockBar() {
-    var bar = h("div", "lock");
-    if (pw) {
-      var out = h("button", "reset", "keluar mode edit");
-      out.type = "button";
-      out.addEventListener("click", function () { pw = ""; try { localStorage.removeItem("pb-pw"); } catch (e) {} render(); });
-      bar.appendChild(out);
-      return bar;
-    }
-    var form = h("form");
-    var inp = h("input"); inp.type = "password"; inp.id = "pw"; inp.placeholder = "password tim"; inp.autocomplete = "current-password";
-    inp.setAttribute("aria-label", "password tim");
-    var go = h("button", "go", "edit"); go.type = "submit";
-    form.appendChild(inp); form.appendChild(go);
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      if (!inp.value) return;
-      pw = inp.value;
-      try { localStorage.setItem("pb-pw", pw); } catch (er) {}
-      render();
-    });
-    bar.appendChild(form);
-    return bar;
-  }
-
   function setStatus(id, v) {
     if (st(id) === v) return;
     var prev = st(id);
@@ -312,10 +282,9 @@ select:hover { border-color: var(--mute); }
     pending++;
     render();
     setMsg("menyimpan");
-    fetch("/api/status", { method: "POST", headers: { "Content-Type": "application/json", "x-edit-password": pw }, body: JSON.stringify({ slot: id, status: v }) })
+    fetch("/api/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot: id, status: v }) })
       .then(function (r) {
         pending--;
-        if (r.status === 401) { state.s[id] = prev; pw = ""; try { localStorage.removeItem("pb-pw"); } catch (e) {} render(); setMsg("password salah"); return; }
         if (!r.ok) throw new Error(r.status);
         setMsg("tersimpan");
       })

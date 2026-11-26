@@ -1,8 +1,5 @@
-const crypto = require("crypto");
-
 const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const PASSWORD = process.env.EDIT_PASSWORD || "";
 const KEY = "papan-brief:status";
 
 const SLOTS = [
@@ -29,13 +26,6 @@ async function redis(command) {
   const j = await r.json();
   if (j.error) throw new Error(j.error);
   return j.result;
-}
-
-function samePassword(given) {
-  if (!PASSWORD || typeof given !== "string") return false;
-  const a = crypto.createHash("sha256").update(given).digest();
-  const b = crypto.createHash("sha256").update(PASSWORD).digest();
-  return crypto.timingSafeEqual(a, b);
 }
 
 async function readAll() {
@@ -71,10 +61,6 @@ module.exports = async function handler(req, res) {
       return;
     }
     if (req.method === "POST") {
-      if (!samePassword(req.headers["x-edit-password"])) {
-        res.status(401).json({ error: "password salah" });
-        return;
-      }
       let body = req.body;
       if (typeof body === "string") body = JSON.parse(body || "{}");
       const slot = body && body.slot;
