@@ -25,7 +25,14 @@ function sb(path, options) {
 
 async function readAll() {
   const r = await sb(TABLE + "?select=slot,status");
-  if (!r.ok) throw new Error("read " + r.status);
+  if (!r.ok) {
+    const t = await r.text();
+    const e = new Error("read");
+    e.detail = r.status === 404 || /brief_status/.test(t) ? "tabel brief_status belum ada, jalankan supabase.sql" :
+      r.status === 401 || r.status === 403 ? "kunci supabase ditolak, cek SUPABASE_SERVICE_ROLE_KEY" :
+      "supabase membalas " + r.status;
+    throw e;
+  }
   const rows = await r.json();
   const s = {};
   rows.forEach((row) => {
@@ -37,7 +44,7 @@ async function readAll() {
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    res.status(500).json({ error: "supabase belum disambung" });
+    res.status(500).json({ error: !SUPABASE_URL ? "SUPABASE_URL belum diisi di vercel" : "SUPABASE_SERVICE_ROLE_KEY belum diisi di vercel" });
     return;
   }
   try {
@@ -66,6 +73,6 @@ module.exports = async function handler(req, res) {
     res.setHeader("Allow", "GET, POST");
     res.status(405).json({ error: "method tidak didukung" });
   } catch (e) {
-    res.status(500).json({ error: "gagal mengakses database" });
+    res.status(500).json({ error: e.detail || (e.cause && e.cause.code === "ENOTFOUND" ? "SUPABASE_URL salah, cek alamatnya" : "gagal mengakses database") });
   }
 };

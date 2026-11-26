@@ -293,7 +293,7 @@ select:hover { border-color: var(--mute); }
 
   function load() {
     if (pending) return;
-    fetch("/api/status", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    fetch("/api/status", { cache: "no-store" }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || ("error " + r.status)); return j; }); })
       .then(function (j) {
         if (pending) return;
         var changed = JSON.stringify(j.s || {}) !== JSON.stringify(state.s);
@@ -302,7 +302,7 @@ select:hover { border-color: var(--mute); }
         var a = document.activeElement;
         if ((changed || first) && !(a && a.tagName === "SELECT")) { var keep = saveMsg; render(); setMsg(keep); }
       })
-      .catch(function () { setMsg("gagal memuat data"); });
+      .catch(function (e) { setMsg("gagal memuat data: " + e.message); });
   }
 
   render();
